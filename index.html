@@ -1259,8 +1259,8 @@ async function submitOrder(){
   submitBtn.style.opacity = "1";
   submitBtn.innerText = "Submit";
 
-  const msg = await res.text();
-  alert(msg);
+  const msg = await res.json();
+  alert(JSON.stringify(msg));
 
 }
 
