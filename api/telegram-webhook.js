@@ -15,25 +15,14 @@ import {
 // =====================================
 
 if (!getApps().length) {
-
   initializeApp({
-
     credential: cert({
-
-      projectId:
-        process.env.FIREBASE_PROJECT_ID,
-
-      clientEmail:
-        process.env.FIREBASE_CLIENT_EMAIL,
-
-      privateKey:
-        process.env.FIREBASE_PRIVATE_KEY
-          .replace(/\\n/g, "\n")
-
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY
+        ?.replace(/\\n/g, "\n")
     })
-
   });
-
 }
 
 const db = getFirestore();
@@ -46,65 +35,61 @@ const db = getFirestore();
 export default async function handler(req, res) {
 
   if (req.method !== "POST") {
-
     return res.status(405).json({
       error: "Method not allowed"
     });
-
   }
-
-
-  // ===================================
-  // WEBHOOK SECURITY
-  // ===================================
-
-  const secret =
-    process.env.TELEGRAM_WEBHOOK_SECRET;
-
-  const receivedSecret =
-    req.headers["x-telegram-bot-api-secret-token"];
-
-  if (
-    secret &&
-    receivedSecret !== secret
-  ) {
-
-    return res.status(401).json({
-      error: "Unauthorized"
-    });
-
-  }
-
 
   try {
 
-    const update = req.body;
+    // -----------------------------------
+    // OPTIONAL WEBHOOK SECURITY
+    // -----------------------------------
+
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+    if (secret) {
+      const receivedSecret =
+        req.headers["x-telegram-bot-api-secret-token"];
+
+      if (receivedSecret !== secret) {
+        return res.status(401).json({
+          error: "Unauthorized"
+        });
+      }
+    }
 
 
-    // ===================================
-    // CALLBACK QUERY
-    // ===================================
+    // -----------------------------------
+    // READ TELEGRAM UPDATE
+    // -----------------------------------
 
-    const callback =
-      update?.callback_query;
+    let update = req.body;
+
+    if (typeof update === "string") {
+      try {
+        update = JSON.parse(update);
+      } catch {
+        return res.status(400).json({
+          error: "Invalid JSON"
+        });
+      }
+    }
+
+
+    const callback = update?.callback_query;
 
     if (!callback) {
-
       return res.status(200).json({
         success: true
       });
-
     }
 
 
     const callbackData =
-      String(
-        callback.data || ""
-      );
+      String(callback.data || "");
 
-
-    const parts =
-      callbackData.split(":");
+    const parts = callbackData.split(":");
 
 
     if (
@@ -112,18 +97,19 @@ export default async function handler(req, res) {
       parts[0] !== "status"
     ) {
 
+      await answerCallback(
+        callback.id,
+        "❌ Invalid button."
+      );
+
       return res.status(200).json({
         success: true
       });
-
     }
 
 
-    const orderId =
-      parts[1];
-
-    const newStatus =
-      parts[2];
+    const orderId = parts[1];
+    const newStatus = parts[2];
 
 
     const allowedStatuses = [
@@ -134,27 +120,26 @@ export default async function handler(req, res) {
     ];
 
 
-    if (
-      !allowedStatuses.includes(
-        newStatus
-      )
-    ) {
+    if (!allowedStatuses.includes(newStatus)) {
+
+      await answerCallback(
+        callback.id,
+        "❌ Invalid status."
+      );
 
       return res.status(400).json({
         error: "Invalid status"
       });
-
     }
 
 
-    // ===================================
-    // GET ORDER
-    // ===================================
+    // -----------------------------------
+    // FIRESTORE ORDER
+    // -----------------------------------
 
-    const orderRef =
-      db
-        .collection("orders")
-        .doc(orderId);
+    const orderRef = db
+      .collection("orders")
+      .doc(orderId);
 
     const orderSnap =
       await orderRef.get();
@@ -170,13 +155,10 @@ export default async function handler(req, res) {
       return res.status(404).json({
         error: "Order not found"
       });
-
     }
 
 
-    const order =
-      orderSnap.data();
-
+    const order = orderSnap.data();
 
     const currentStatus =
       String(
@@ -184,23 +166,20 @@ export default async function handler(req, res) {
       ).toLowerCase();
 
 
-    // ===================================
+    // -----------------------------------
     // STATUS RULES
-    // ===================================
+    // -----------------------------------
 
-    if (
-      currentStatus === "delivered"
-    ) {
+    if (currentStatus === "delivered") {
 
       await answerCallback(
         callback.id,
-        "📦 Order already delivered."
+        "📦 Already delivered."
       );
 
       return res.status(200).json({
         success: true
       });
-
     }
 
 
@@ -217,7 +196,6 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true
       });
-
     }
 
 
@@ -234,101 +212,69 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true
       });
-
     }
 
 
-    // ===================================
-    // UPDATE DATA
-    // ===================================
+    // -----------------------------------
+    // FIRESTORE UPDATE
+    // -----------------------------------
 
     const updateData = {
-
-      status:
-        newStatus
-
+      status: newStatus,
+      updatedAt: Timestamp.now()
     };
 
 
-    if (
-      newStatus === "approved"
-    ) {
-
-      updateData.approvedAt =
-        Timestamp.now();
-
+    if (newStatus === "approved") {
+      updateData.approvedAt = Timestamp.now();
     }
 
 
-    if (
-      newStatus === "rejected"
-    ) {
-
-      updateData.rejectedAt =
-        Timestamp.now();
+    if (newStatus === "rejected") {
+      updateData.rejectedAt = Timestamp.now();
 
       updateData.rejectionReason =
         "Payment rejected by admin.";
-
     }
 
 
-    if (
-      newStatus === "delivered"
-    ) {
-
-      updateData.deliveredAt =
-        Timestamp.now();
-
+    if (newStatus === "delivered") {
+      updateData.deliveredAt = Timestamp.now();
     }
 
 
-    await orderRef.update(
-      updateData
-    );
+    await orderRef.update(updateData);
 
 
-    // ===================================
+    // -----------------------------------
     // STATUS TEXT
-    // ===================================
+    // -----------------------------------
 
     let statusText =
       "🟡 UNDER VERIFICATION";
 
 
-    if (
-      newStatus === "approved"
-    ) {
-
+    if (newStatus === "approved") {
       statusText =
         "🟢 PAYMENT VERIFIED";
-
     }
 
 
-    if (
-      newStatus === "rejected"
-    ) {
-
+    if (newStatus === "rejected") {
       statusText =
         "🔴 PAYMENT REJECTED";
-
     }
 
 
-    if (
-      newStatus === "delivered"
-    ) {
-
+    if (newStatus === "delivered") {
       statusText =
         "📦 ID DELIVERED";
-
     }
 
 
-    // ===================================
-    // ANSWER BUTTON
-    // ===================================
+    // -----------------------------------
+    // TELEGRAM BUTTON FEEDBACK
+    // -----------------------------------
 
     await answerCallback(
       callback.id,
@@ -336,13 +282,12 @@ export default async function handler(req, res) {
     );
 
 
-    // ===================================
+    // -----------------------------------
     // UPDATE TELEGRAM MESSAGE
-    // ===================================
+    // -----------------------------------
 
     const BOT_TOKEN =
       process.env.BOT_TOKEN;
-
 
     const chatId =
       callback.message?.chat?.id;
@@ -372,85 +317,22 @@ ${statusText}
 ${orderId}`;
 
 
-      await fetch(
-        `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
+      await telegramRequest(
+        "editMessageText",
         {
-
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-
-            chat_id:
-              chatId,
-
-            message_id:
-              messageId,
-
-            text:
-              updatedText,
-
-            reply_markup: {
-
-              inline_keyboard: [
-
-                [
-                  {
-                    text:
-                      "🟡 UNDER VERIFICATION",
-
-                    callback_data:
-                      `status:${orderId}:pending`
-                  }
-                ],
-
-                [
-                  {
-                    text:
-                      "🟢 APPROVE",
-
-                    callback_data:
-                      `status:${orderId}:approved`
-                  },
-
-                  {
-                    text:
-                      "🔴 REJECT",
-
-                    callback_data:
-                      `status:${orderId}:rejected`
-                  }
-                ],
-
-                [
-                  {
-                    text:
-                      "📦 DELIVERED",
-
-                    callback_data:
-                      `status:${orderId}:delivered`
-                  }
-                ]
-
-              ]
-
-            }
-
-          })
-
+          chat_id: chatId,
+          message_id: messageId,
+          text: updatedText,
+          reply_markup: getKeyboard(orderId)
         }
       );
-
     }
 
 
     return res.status(200).json({
       success: true,
-      status: newStatus
+      status: newStatus,
+      orderId
     });
 
 
@@ -463,16 +345,59 @@ ${orderId}`;
 
     return res.status(500).json({
       error:
-        error.message
+        error?.message ||
+        "Webhook error"
     });
-
   }
-
 }
 
 
 // =====================================
-// ANSWER CALLBACK
+// TELEGRAM KEYBOARD
+// =====================================
+
+function getKeyboard(orderId) {
+
+  return {
+    inline_keyboard: [
+
+      [
+        {
+          text: "🟡 UNDER VERIFICATION",
+          callback_data:
+            `status:${orderId}:pending`
+        }
+      ],
+
+      [
+        {
+          text: "🟢 APPROVE",
+          callback_data:
+            `status:${orderId}:approved`
+        },
+
+        {
+          text: "🔴 REJECT",
+          callback_data:
+            `status:${orderId}:rejected`
+        }
+      ],
+
+      [
+        {
+          text: "📦 DELIVERED",
+          callback_data:
+            `status:${orderId}:delivered`
+        }
+      ]
+
+    ]
+  };
+}
+
+
+// =====================================
+// ANSWER TELEGRAM BUTTON
 // =====================================
 
 async function answerCallback(
@@ -485,11 +410,49 @@ async function answerCallback(
 
   if (!BOT_TOKEN) return;
 
+  try {
 
-  await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`,
+    await telegramRequest(
+      "answerCallbackQuery",
+      {
+        callback_query_id: callbackId,
+        text,
+        show_alert: false
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "ANSWER CALLBACK ERROR:",
+      error
+    );
+  }
+}
+
+
+// =====================================
+// TELEGRAM API HELPER
+// =====================================
+
+async function telegramRequest(
+  method,
+  body
+) {
+
+  const BOT_TOKEN =
+    process.env.BOT_TOKEN;
+
+  if (!BOT_TOKEN) {
+    throw new Error(
+      "BOT_TOKEN missing"
+    );
+  }
+
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${BOT_TOKEN}/${method}`,
     {
-
       method: "POST",
 
       headers: {
@@ -497,20 +460,23 @@ async function answerCallback(
           "application/json"
       },
 
-      body: JSON.stringify({
-
-        callback_query_id:
-          callbackId,
-
-        text:
-          text,
-
-        show_alert:
-          false
-
-      })
-
+      body: JSON.stringify(body)
     }
   );
 
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok || !data.ok) {
+
+    throw new Error(
+      data?.description ||
+      `Telegram ${method} failed`
+    );
+  }
+
+
+  return data;
 }
