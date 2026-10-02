@@ -7,6 +7,7 @@ export const config = {
   }
 };
 
+
 export default async function handler(req, res) {
 
   if (req.method !== "POST") {
@@ -15,8 +16,13 @@ export default async function handler(req, res) {
     });
   }
 
-  const BOT_TOKEN = process.env.BOT_TOKEN;
-  const CHAT_ID = process.env.CHAT_ID;
+
+  const BOT_TOKEN =
+    process.env.BOT_TOKEN;
+
+  const CHAT_ID =
+    process.env.CHAT_ID;
+
 
   if (!BOT_TOKEN || !CHAT_ID) {
     return res.status(500).json({
@@ -24,31 +30,41 @@ export default async function handler(req, res) {
     });
   }
 
+
   const form = formidable({
     multiples: false,
     keepExtensions: true
   });
 
+
   try {
 
-    const { fields, files } = await new Promise(
-      (resolve, reject) => {
+    // ===================================
+    // READ FORM
+    // ===================================
 
-        form.parse(req, (err, fields, files) => {
+    const { fields, files } =
+      await new Promise(
+        (resolve, reject) => {
 
-          if (err) {
-            reject(err);
-          } else {
-            resolve({
-              fields,
-              files
-            });
-          }
+          form.parse(
+            req,
+            (err, fields, files) => {
 
-        });
+              if (err) {
+                reject(err);
+                return;
+              }
 
-      }
-    );
+              resolve({
+                fields,
+                files
+              });
+            }
+          );
+        }
+      );
+
 
     const account =
       fields.account?.[0] ||
@@ -75,11 +91,16 @@ export default async function handler(req, res) {
       fields.orderId ||
       "";
 
+
     const photo =
       Array.isArray(files.photo)
         ? files.photo[0]
         : files.photo;
 
+
+    // ===================================
+    // VALIDATION
+    // ===================================
 
     if (
       !account ||
@@ -89,15 +110,17 @@ export default async function handler(req, res) {
       !orderId ||
       !photo
     ) {
+
       return res.status(400).json({
-        error: "Required data missing"
+        error:
+          "Required payment data missing"
       });
     }
 
 
-    // =====================================
-    // TELEGRAM ORDER MESSAGE
-    // =====================================
+    // ===================================
+    // ORDER MESSAGE
+    // ===================================
 
     const message =
 `🛒 NEW FF ID ORDER
@@ -116,36 +139,49 @@ export default async function handler(req, res) {
 ${orderId}`;
 
 
-    // =====================================
-    // FOUR BUTTONS
-    // =====================================
+    // ===================================
+    // TELEGRAM BUTTONS
+    // ===================================
 
     const keyboard = {
+
       inline_keyboard: [
 
         [
           {
-            text: "🟡 UNDER VERIFICATION",
-            callback_data: `status:${orderId}:pending`
+            text:
+              "🟡 UNDER VERIFICATION",
+
+            callback_data:
+              `status:${orderId}:pending`
           }
         ],
 
         [
           {
-            text: "🟢 APPROVE",
-            callback_data: `status:${orderId}:approved`
+            text:
+              "🟢 APPROVE",
+
+            callback_data:
+              `status:${orderId}:approved`
           },
 
           {
-            text: "🔴 REJECT",
-            callback_data: `status:${orderId}:rejected`
+            text:
+              "🔴 REJECT",
+
+            callback_data:
+              `status:${orderId}:rejected`
           }
         ],
 
         [
           {
-            text: "📦 DELIVERED",
-            callback_data: `status:${orderId}:delivered`
+            text:
+              "📦 DELIVERED",
+
+            callback_data:
+              `status:${orderId}:delivered`
           }
         ]
 
@@ -153,73 +189,92 @@ ${orderId}`;
     };
 
 
-    // =====================================
-    // SEND MESSAGE
-    // =====================================
+    // ===================================
+    // SEND ORDER MESSAGE
+    // ===================================
 
-    const tgMessage = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
+    const messageResponse =
+      await fetch(
+        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+        {
 
-        headers: {
-          "Content-Type": "application/json"
-        },
+          method: "POST",
 
-        body: JSON.stringify({
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-          chat_id: CHAT_ID,
+          body: JSON.stringify({
 
-          text: message,
+            chat_id:
+              CHAT_ID,
 
-          reply_markup: keyboard
+            text:
+              message,
 
-        })
-      }
-    );
+            reply_markup:
+              keyboard
 
-
-    if (!tgMessage.ok) {
-
-      const errorText =
-        await tgMessage.text();
-
-      return res.status(500).json({
-        error: errorText
-      });
-
-    }
+          })
+        }
+      );
 
 
     const messageData =
-      await tgMessage.json();
+      await messageResponse.json();
 
 
-    // =====================================
-    // SEND PAYMENT SCREENSHOT
-    // =====================================
+    if (
+      !messageResponse.ok ||
+      !messageData.ok
+    ) {
 
-    const photoData =
+      console.error(
+        "TELEGRAM MESSAGE ERROR:",
+        messageData
+      );
+
+      return res.status(500).json({
+        error:
+          messageData.description ||
+          "Telegram message failed"
+      });
+    }
+
+
+    // ===================================
+    // READ SCREENSHOT
+    // ===================================
+
+    const fileBuffer =
+      fs.readFileSync(
+        photo.filepath
+      );
+
+
+    const formData =
       new FormData();
 
-    photoData.append(
+
+    formData.append(
       "chat_id",
       CHAT_ID
     );
 
-    photoData.append(
+
+    formData.append(
       "caption",
       `🧾 Payment Screenshot\n\n🆔 Order: ${orderId}`
     );
 
-    photoData.append(
+
+    formData.append(
       "photo",
 
       new Blob(
         [
-          fs.readFileSync(
-            photo.filepath
-          )
+          fileBuffer
         ],
         {
           type:
@@ -233,40 +288,59 @@ ${orderId}`;
     );
 
 
-    const tgPhoto = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,
-      {
-        method: "POST",
-        body: photoData
-      }
-    );
+    // ===================================
+    // SEND SCREENSHOT
+    // ===================================
+
+    const photoResponse =
+      await fetch(
+        `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
 
 
-    if (!tgPhoto.ok) {
+    const photoData =
+      await photoResponse.json();
 
-      const errorText =
-        await tgPhoto.text();
+
+    if (
+      !photoResponse.ok ||
+      !photoData.ok
+    ) {
+
+      console.error(
+        "TELEGRAM PHOTO ERROR:",
+        photoData
+      );
 
       return res.status(500).json({
-        error: errorText
+        error:
+          photoData.description ||
+          "Payment screenshot failed"
       });
-
     }
 
 
-    // =====================================
-    // RETURN TELEGRAM MESSAGE ID
-    // =====================================
+    // ===================================
+    // SUCCESS
+    // ===================================
 
     return res.status(200).json({
 
       success: true,
 
-      messageId:
-        messageData.result?.message_id || null,
+      orderId,
 
-      chatId:
-        CHAT_ID
+      messageId:
+        messageData.result?.message_id ||
+        null,
+
+      photoMessageId:
+        photoData.result?.message_id ||
+        null
 
     });
 
@@ -278,10 +352,11 @@ ${orderId}`;
       error
     );
 
+
     return res.status(500).json({
-      error: error.message
+      error:
+        error?.message ||
+        "Order submission failed"
     });
-
   }
-
 }
