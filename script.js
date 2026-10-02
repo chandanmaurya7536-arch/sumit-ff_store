@@ -1277,7 +1277,7 @@ window.submitOrder =
       if (sendingTitle) {
 
         sendingTitle.innerText =
-          "Sending to Telegram...";
+          "Sending...";
 
       }
 
