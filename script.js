@@ -1436,11 +1436,11 @@ window.submitOrder =
       ) {
 
         showPopup(
-          "Payment Submitted",
-          "Your payment is now under verification. You will be notified after approval.",
-          "success",
-          "✓"
-        );
+  "Payment Submitted",
+  "Your order has been submitted successfully. You can check your order status for updates.",
+  "success",
+  "✓"
+);
 
       }
 
