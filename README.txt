@@ -20,7 +20,7 @@ Vercel Environment Variables — set separately in EACH Vercel project:
 2) CHAT_ID = that project's own destination chat/group ID
 3) TELEGRAM_WEBHOOK_URL
    First project: https://sumit-ffstore-rust.vercel.app/api/telegram-webhook
-   Second project: https://sumit-ffstore-five.vercel.app/api/telegram-webhook
+   Second project: https://sumit-ffstore-eight.vercel.app/api/telegram-webhook
 4) FIREBASE_PROJECT_ID = sumit-ff-store
 5) FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY = same intended Firebase Admin service account values in both projects
 6) TELEGRAM_WEBHOOK_SECRET is optional. If set, use the same value in that project's webhook setup and Telegram will now be configured with that secret.
