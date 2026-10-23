@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     },
     "3": {
       url: process.env.SITE3_WEBHOOK_URL || "https://YOUR-THIRD-DOMAIN/api/telegram-webhook?site=3",
-      tokenEnv: "BOT_TOKEN_SITE3"
+      tokenEnv: "https://sumit-ffstore-po3o.vercel.app"
     }
   };
 
