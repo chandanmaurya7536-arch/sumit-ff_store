@@ -3,7 +3,7 @@ SUMIT FF STORE — MULTI-DOMAIN PAYMENT SETTINGS
 ========================================================= */
 (function () {
 const SITE_CONFIGS = {
-"sumit-ffstore-rust.vercel.app": {
+"sumit-ffstore-sand.vercel.app": {
 upiId: "sumitchaudhary90910@oksbi",
 qrPath: "assets/qr.png"
 },
