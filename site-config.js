@@ -15,7 +15,7 @@ qrPath: "assets/qr.png"
 
 // THIRD DOMAIN — fill these two placeholders when ready.
 // Do not use this placeholder hostname as a real domain.
-"THIRD_DOMAIN_HERE": {
+"https://sumit-ffstore-po3o.vercel.app": {
   upiId: "sumitchaudhary90910@oksbi",
   qrPath: "assets/qr3.png"
 }
