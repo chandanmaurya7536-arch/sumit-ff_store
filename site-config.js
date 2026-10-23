@@ -8,7 +8,7 @@ upiId: "sumitchaudhary90910@oksbi",
 qrPath: "assets/qr.png"
 },
 
-"sumit-ffstore-eight.vercel.app": {
+"sumit-ffstore-lime.vercel.app": {
   upiId: "amirkhan9518@naviaxis",
   qrPath: "assets/qr2.png"
 },
