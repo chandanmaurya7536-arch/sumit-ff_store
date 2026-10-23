@@ -16,7 +16,7 @@ qrPath: "assets/qr.png"
 // THIRD DOMAIN — fill these two placeholders when ready.
 // Do not use this placeholder hostname as a real domain.
 "THIRD_DOMAIN_HERE": {
-  upiId: "THIRD_UPI_ID_HERE",
+  upiId: "sumitchaudhary90910@oksbi",
   qrPath: "assets/qr3.png"
 }
 
