@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   // Select webhook using ?site=1, ?site=2 or ?site=3
   const sites = {
     "1": {
-      url: "https://sumit-ffstore-rust.vercel.app/api/telegram-webhook?site=1",
+      url: "https://sumit-ffstore-sand.vercel.app/api/telegram-webhook?site=1",
       tokenEnv: "BOT_TOKEN"
     },
     "2": {
