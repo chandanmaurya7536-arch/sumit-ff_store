@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       tokenEnv: "BOT_TOKEN"
     },
     "2": {
-      url: "https://sumit-ffstore-eight.vercel.app/api/telegram-webhook?site=2",
+      url: "https://sumit-ffstore-lime.vercel.app/api/telegram-webhook?site=2",
       tokenEnv: "BOT_TOKEN_SITE2"
     },
     "3": {
