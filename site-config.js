@@ -25,7 +25,7 @@
     },
 
     // SITE 2 AMIR — unchanged
-    "sumit-ffstore-lime.vercel.app": {
+    "sumit-ffstore-one.vercel.app": {
       siteId: "2",
       upiId: "amirkhan9518@naviaxis",
       qrPath: "assets/qr2.png"
