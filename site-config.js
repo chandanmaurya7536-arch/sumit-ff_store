@@ -5,7 +5,7 @@
 (function () {
   const SITE_CONFIGS = {
     // SITE 1 CHANDU — unchanged
-    "sumit-ffstore-green.vercel.app": {
+    "sumit-ffstore-theta.vercel.app": {
       siteId: "1",
       upiId: "sumitchaudhary90910@oksbi",
       qrPath: "assets/qr.png"
